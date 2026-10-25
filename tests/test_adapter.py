@@ -148,6 +148,32 @@ end run
         self.assertEqual(process.returncode, 0, "Synthetic AppleScript helpers failed")
         self.assertEqual(json.loads(process.stdout), {**payload, "date": "2032-02-29"})
 
+    @unittest.skipUnless(sys.platform == "darwin", "AppleScript gate test requires macOS")
+    def test_script_gate_without_things_or_mutation_code(self):
+        import os
+        source = SCRIPT.read_text()
+        gate = source.split('                set optIn to ', 1)[1].split('                set fields to ', 1)[0]
+        script = '''use framework "Foundation"
+on run
+    set raw to current application's NSFileHandle's fileHandleWithStandardInput()'s readDataToEndOfFile()
+    set request to current application's NSJSONSerialization's JSONObjectWithData:raw options:0 |error|:(missing value)
+    try
+        set optIn to ''' + gate + '''
+        return "gate passed"
+    on error number errorNumber
+        return errorNumber as text
+    end try
+end run
+'''
+        for opt_in, choice, expected in [("false", "execute", "7101"), ("true", "preview", "7101"),
+                                         ("false", "preview", "7101"), ("true", "execute", "gate passed")]:
+            result = subprocess.run(["/usr/bin/osascript", "-e", script],
+                                    input=json.dumps({"execution": choice}).encode(),
+                                    env={**os.environ, "THINGS_ALLOW_WRITES": opt_in},
+                                    capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, "Synthetic AppleScript gate failed")
+            self.assertEqual(result.stdout.decode().strip(), expected)
+
 
 if __name__ == "__main__":
     unittest.main()
