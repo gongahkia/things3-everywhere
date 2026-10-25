@@ -94,6 +94,9 @@ class ProtocolTests(unittest.TestCase):
         invalid = self.call("things_get_task", {"id": "PRIVATE_INPUT_SENTINEL ", "extra": "private notes"})
         self.assertNotIn("PRIVATE_INPUT_SENTINEL", json.dumps(invalid))
         self.assertNotIn("private notes", json.dumps(invalid))
+        malformed = self.request("tools/call", {"name": "things_get_task", "arguments": ["PRIVATE_INPUT_SENTINEL"]})
+        self.assertEqual(malformed["error"]["code"], -32602)
+        self.assertNotIn("PRIVATE_INPUT_SENTINEL", json.dumps(malformed))
 
     def test_fake_execution_and_preview_even_with_opt_in(self):
         self.start(enabled=True)

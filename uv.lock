@@ -737,11 +737,17 @@ name = "things3-everywhere"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "anyio" },
+    { name = "jsonschema" },
     { name = "mcp" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "mcp", specifier = "==1.28.0" }]
+requires-dist = [
+    { name = "anyio", specifier = "==4.15.1" },
+    { name = "jsonschema", specifier = "==4.26.0" },
+    { name = "mcp", specifier = "==1.28.0" },
+]
 
 [[package]]
 name = "typing-extensions"

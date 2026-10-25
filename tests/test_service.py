@@ -187,6 +187,36 @@ class ServiceTests(unittest.TestCase):
         self.adapter.after_write_read_error = True
         self.assert_code("WRITE_UNVERIFIED", lambda: self.service.create_task({"title": "T"}, "execute"))
 
+    def test_unrequested_field_changes_fail_verification(self):
+        original = self.adapter.update_task
+        def unexpectedly_changes_deadline(id, fields, *, execution="preview"):
+            result = original(id, fields, execution=execution)
+            self.adapter.tasks[id] = replace(self.adapter.tasks[id], deadline=None)
+            return result
+        self.adapter.update_task = unexpectedly_changes_deadline
+        self.assert_code("WRITE_UNVERIFIED", lambda: self.service.update_task("synthetic-a", {"notes": "New"}, "execute"))
+        self.assertEqual(len(self.adapter.writes), 1)
+
+    def test_missing_id_mutations_and_invalid_complete_readback(self):
+        self.assert_code("NOT_FOUND", lambda: self.service.update_task("missing", {"notes": "New"}, "execute"))
+        self.assert_code("NOT_FOUND", lambda: self.service.complete_task("missing", "execute"))
+        self.assertEqual(self.adapter.writes, [])
+        self.adapter.ignore_fields = True
+        self.assert_code("WRITE_UNVERIFIED", lambda: self.service.complete_task("synthetic-a", "execute"))
+
+    def test_adapter_rechecks_recurrence_after_service_read(self):
+        original = self.adapter.get_task
+        reads = 0
+        def changes_between_calls(id):
+            nonlocal reads
+            reads += 1
+            if reads == 2:
+                self.adapter.tasks[id] = sample(recurrence="repeating")
+            return original(id)
+        self.adapter.get_task = changes_between_calls
+        self.assert_code("RECURRENCE_UNSAFE", lambda: self.service.complete_task("synthetic-a", "execute"))
+        self.assertEqual(self.adapter.writes, [])
+
     def test_invalid_receipt_is_not_success(self):
         self.adapter.bad_receipt = True
         self.assert_code("WRITE_UNVERIFIED", lambda: self.service.create_task({"title": "T"}, "execute"))
