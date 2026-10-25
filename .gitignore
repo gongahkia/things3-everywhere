@@ -1,0 +1,42 @@
+# Dependencies and runtime state
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+.DS_Store
+.local/
+.codex/
+.idea/
+.vscode/
+
+# Private configuration and credentials
+.env
+.env.*
+!.env.example
+*.local.json
+*.local.toml
+credentials*
+secrets*
+telegram*.json
+telegram*.toml
+
+# Personal data must never become fixtures
+exports/
+backups/
+private/
+screenshots/
+diagnostics/
+logs/
+*.log
+*.dump
+*.sqlite*
+*.db
+*.db-*
+*.thingsdatabase/
+*.thingsbackup
+
