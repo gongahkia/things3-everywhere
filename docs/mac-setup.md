@@ -1,16 +1,18 @@
 # Things3 Everywhere
 
-Documentation checked **2026-10-25**. This is the detailed Mac-local foundation
-guide; return to the [project overview](../README.md) to choose another workflow.
-For the new digest commands, see [digest and Telegram setup](telegram-setup.md).
+Documentation checked **2026-10-25**. This is the Mac-local setup and verification
+guide. For independent phone use, see [iPhone Shortcuts](iphone-shortcuts.md).
+For digest commands, see [digest and Telegram setup](telegram-setup.md).
 
 A local bridge to Things 3 through supported automation interfaces. Tranche 01
 provides a reusable Python adapter, a CLI, and a local stdio MCP server for Codex.
 It is not an independent task manager or an official Cultured Code product.
 
 **Writes are disabled by default. No live Things writes were performed during
-development.** The machine used for this tranche has macOS but no discoverable
-Things installation, so Things-specific AppleScript execution remains unverified.
+development.** The user confirms that Things is intentionally absent on the
+development Mac. `APP_NOT_FOUND` is expected there, not evidence of a discovery
+defect. Things-specific AppleScript execution remains unverified. Do not search
+for, launch, or install Things on that Mac to satisfy a test.
 
 Seven tools cover Today, Inbox, title search, get-by-ID, create, update and
 complete. All write tools default to previews. Creation has a guarded execution
@@ -49,6 +51,120 @@ needed. Permission denial is an error; there is no fallback or permission bypass
 Before a first live integration test, inspect the installed dictionary in Script
 Editor → File → Open Dictionary → Things, or run `sdef` on its app bundle. The
 diagnostic checks required term names; it does not prove operational semantics.
+
+## APP_NOT_FOUND and other runtime outcomes
+
+Source review: `find_app` reads `Contents/Info.plist` at a configured absolute
+`.app` path, or at four combinations of system/user Applications and
+`Things3.app`/`Things.app`. It requires bundle ID `com.culturedcode.ThingsMac`.
+It does not use Spotlight, inspect a process list, or require an already running
+app. A configured path replaces the default candidates. Only after metadata
+matches does the transport check the dictionary and invoke `osascript`.
+
+| Outcome | Meaning and next action on the target Mac |
+| --- | --- |
+| `APP_NOT_FOUND` | No candidate with readable, matching metadata was found. This code alone is not proof of absence everywhere: missing/unreadable/malformed metadata is skipped. On the development Mac, the user's confirmation establishes intentional absence. Use a Mac with Things installed for live checks. |
+| `INVALID_CONFIG` | The explicit app path is not an absolute `.app` path; correct that process's configuration. |
+| `MACOS_REQUIRED` | Live AppleScript needs macOS; use synthetic checks on other platforms. |
+| `DICTIONARY_UNAVAILABLE` / `UNSUPPORTED_INTERFACE` | Dictionary extraction failed or expected terms were absent; inspect the installed dictionary manually. Do not substitute database access. |
+| `PERMISSION_DENIED` | macOS denied Automation access. Review only the launching app's Things permission; do not reset permission databases or request Full Disk Access. |
+| `TIMEOUT` / `APP_UNAVAILABLE` | A subprocess/event exceeded its timeout, or Things was unavailable at execution. Stop and inspect the target Mac before a deliberate retry. |
+| `SCRIPT_FAILED` / `INVALID_RESPONSE` | Execution or response validation failed; this is not evidence that the app is absent. Keep output private and investigate the specific interface. |
+
+No detection repair was justified by the development Mac's expected absence.
+Offline tests use a deliberately absent fixture path to verify production errors
+without searching actual app locations, launching Things, or prompting for access.
+There is no automatic fake-data fallback.
+
+## Portable verification on a Mac with Things installed
+
+Start **inside an existing checkout** of `gongahkia/things3-everywhere` on that
+Mac. These commands discover its root; they do not transfer files or select a
+revision:
+
+```sh
+repo_root="$(git rev-parse --show-toplevel)" || exit 1
+cd "$repo_root"
+git remote -v
+git rev-parse HEAD
+git status --short
+test -f scripts/check_mcp.py
+```
+
+Check the remote identity before continuing. The intended reviewed code must
+actually be present on this Mac, including `scripts/check_mcp.py` and its tests.
+A commit hash does not describe uncommitted changes. Tranche 04's report records
+its baseline revision and changed files; those changes were **not committed or
+pushed by the agent**. Do not assume GitHub or another checkout contains them.
+Arrange your own reviewed revision/transfer separately, preserving local changes;
+this runbook performs no checkout, reset, commit, push, or file transfer.
+
+Use the repository's pinned environment rather than whichever Python the shell
+prompt displays. With `uv` available:
+
+```sh
+uv sync --frozen
+.venv/bin/python --version
+uv pip check
+uv run --frozen python -m unittest discover -s tests -v
+uv run --frozen python scripts/check_docs.py
+uv run --frozen python scripts/check_mcp.py --fake
+```
+
+`--fake` explicitly uses synthetic Things data through the production server's
+main/SDK/stdio path, with only the service's adapter replaced. It is an offline
+transport check, not a Things integration test. The test-only fixture has a
+fail-on-write adapter in read-only mode. It is not selectable through production
+server configuration. No credentials are needed. To check digest behavior too:
+
+```sh
+THINGS_ALLOW_WRITES=false .venv/bin/things3-everywhere digest preview --fake
+THINGS_ALLOW_WRITES=false .venv/bin/things3-everywhere digest send-once --fake
+```
+
+Both print synthetic text; the second is a dry run and makes zero Telegram
+requests. Do not add `--execute` during read-only verification.
+
+**On the target Mac only**, inspect the Things dictionary manually as described
+above. Then run the diagnostic and the bounded MCP read check:
+
+```sh
+(
+  export THINGS_ALLOW_WRITES=false
+  .venv/bin/things3-everywhere doctor &&
+  .venv/bin/python scripts/check_mcp.py --live
+)
+```
+
+If the app is in a nonstandard location, supply its known absolute bundle path
+through `THINGS_APP_PATH` inside this subshell; do not copy a path from another
+Mac. The subshell's write restriction does not change persistent configuration.
+The first actual read may request normal Automation consent. The user must grant
+it manually for the launching application if desired. A denial stops the check;
+there is no repeated prompt, permission bypass, or automatic retry.
+
+The script launches the actual production MCP entry point and performs initialize,
+tool discovery, Today, Inbox, a synthetic unlikely-to-match title search, and
+get-by-ID for one item from those bounded results. Each list is limited to **3**
+items. With no item available, lookup is explicitly **SKIPPED**, not fabricated.
+It formats the returned Today subset locally in memory; the usual partial-list
+notice applies if capped. It never calls Telegram or a mutation tool.
+
+Only counts, schema-check outcomes, and allowlisted error codes are printed.
+Task titles, notes, IDs, and digest text stay in the local process; no response
+files are saved. Child stderr and unexpected exception details are suppressed.
+Each tool wait is bounded, and the child process ends when the check exits.
+Exit 0 means the requested checks passed (lookup may be skipped); exit 1 means
+blocked/failed. The output identifies `synthetic` versus `live_read_only` and
+never changes mode after failure.
+
+A live PASS establishes successful reads and validated structure, not equality
+with the Things UI. Compare privately in Things and record that separately.
+Things determines Today using the target Mac's local state/day; the digest's
+date heading uses Asia/Singapore. Synchronization to iPhone/Things Cloud, live
+writes, Telegram delivery, and locked-phone execution remain separate tests.
+The [controlled write test](manual-write-test.md) is user-invoked and is not part
+of this runbook. No Codex registration is required to run the MCP check.
 
 ## Codex registration
 

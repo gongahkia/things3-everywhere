@@ -4,6 +4,7 @@ from pathlib import Path
 import selectors
 import subprocess
 import sys
+import tempfile
 import unittest
 
 from things3_everywhere.cli import summarize
@@ -15,9 +16,19 @@ from test_service import FakeAdapter, sample
 
 
 class ProtocolTests(unittest.TestCase):
-    def start(self, enabled=False):
+    def start(self, enabled=False, missing_app=False):
         env = {**os.environ, "TEST_ENABLE_FAKE_WRITES": "true" if enabled else "false"}
-        self.process = subprocess.Popen([sys.executable, str(Path(__file__).with_name("fake_server.py"))],
+        env["THINGS_ALLOW_WRITES"] = "false"
+        self.synthetic = not missing_app
+        command = [sys.executable, str(Path(__file__).with_name("fake_server.py"))]
+        if missing_app:
+            # The live backend checks only this deliberately absent fixture path.
+            # No installed-app search, launch, sdef, or permission prompt is needed.
+            directory = tempfile.TemporaryDirectory()
+            self.addCleanup(directory.cleanup)
+            env["THINGS_APP_PATH"] = str(Path(directory.name) / "AbsentFixture.app")
+            command = [sys.executable, "-m", "things3_everywhere.server"]
+        self.process = subprocess.Popen(command,
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                         text=True, env=env)
         self.sequence = 0
@@ -46,9 +57,31 @@ class ProtocolTests(unittest.TestCase):
         self.process = None
         self.assertEqual(process.returncode, 0)
         self.assertEqual(stdout, "", "Unexpected stdout outside requested protocol replies")
-        self.assertIn("details suppressed", stderr)
+        if self.synthetic:
+            self.assertIn("details suppressed", stderr)
+            self.assertIn("Synthetic MCP fixture", stderr)
         self.assertNotIn("PRIVATE_LOG_SENTINEL", stderr)
         self.assertNotIn("secret synthetic notes", stderr)
+
+    @unittest.skipUnless(sys.platform == "darwin", "Missing-app production preflight requires macOS")
+    def test_production_live_backend_missing_app_is_structured_without_fallback(self):
+        self.start(missing_app=True)
+        self.assertEqual(len(self.request("tools/list", {})["result"]["tools"]), 7)
+        for name, arguments in [
+            ("things_today", {"limit": 2}), ("things_inbox", {"limit": 2}),
+            ("things_search", {"query": "synthetic-absent-marker", "limit": 2}),
+            ("things_get_task", {"id": "synthetic-absent-id"}),
+        ]:
+            result = self.call(name, arguments)
+            self.assertTrue(result["isError"])
+            body = result["structuredContent"]
+            self.assertEqual(set(body), {"error"})
+            self.assertEqual(body["error"]["code"], "APP_NOT_FOUND")
+            self.assertEqual(body["error"]["outcome"], "not_attempted")
+            self.assertIn("THINGS_APP_PATH", body["error"]["message"])
+            self.assertNotIn("AbsentFixture", json.dumps(body))
+        # The same process still responds after the dependency errors.
+        self.assertEqual(len(self.request("tools/list", {})["result"]["tools"]), 7)
 
     def send(self, message):
         self.process.stdin.write(json.dumps(message) + "\n")

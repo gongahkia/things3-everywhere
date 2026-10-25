@@ -8,7 +8,7 @@ nothing was staged, committed, pushed, reset, cleaned, or discarded.
 
 | File | Result |
 | --- | --- |
-| [README](../README.md) | Phone-first starting sequence; links distinguish implemented Mac features, phone recipes, and future work. |
+| `README.md` (historical; removed in a later revision) | Phone-first starting sequence; links distinguished implemented Mac features, phone recipes, and future work. |
 | [iPhone Shortcuts](iphone-shortcuts.md) | Current requirements, explicit variable/property selection, read-only date-filter briefing, daily 8:30 AM setup and locked-phone test, single selected-item completion with cancellation. |
 | [Phone Telegram](iphone-telegram.md) | Private setup, explicit request/receipt variable wiring, standalone synthetic send test, offline Unicode/length preflight, fixed destination and error/privacy limitations. |
 | [Verification checklist](verification.md) | Selected-item guard and phone delivery preflight checks; distinction between Python tests and pending device verification. |
