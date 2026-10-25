@@ -1,5 +1,6 @@
 # Dependencies and runtime state
 .venv/
+node_modules/
 __pycache__/
 *.py[cod]
 *.egg-info/
