@@ -40,4 +40,5 @@ logs/
 *.db-*
 *.thingsdatabase/
 *.thingsbackup
-
+node_modules
+AGENTS.md

@@ -8,6 +8,14 @@ from .runtime import live_service
 from .safety import WritePolicy
 from .tools import METHODS, dispatch
 from .transport import dictionary_summary, find_app
+from .briefing import briefing
+
+
+class PrivateArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        # argparse normally echoes rejected values, which might include a misplaced secret.
+        self.print_usage(sys.stderr)
+        self.exit(2, "Invalid command line; use --help. Argument values are not logged.\n")
 
 
 def doctor():
@@ -36,16 +44,28 @@ def summarize(result):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Local Things bridge; call arguments are JSON on stdin.")
+    parser = PrivateArgumentParser(description="Local Things bridge; call arguments are JSON on stdin.")
     subcommands = parser.add_subparsers(dest="command", required=True)
     subcommands.add_parser("doctor", help="Check app and scripting dictionary without reading tasks.")
     call = subcommands.add_parser("call", help="Call one tool with a JSON object on stdin (default {}).")
     call.add_argument("tool", choices=METHODS)
     call.add_argument("--summary", action="store_true", help="Print counts/outcomes without task content or IDs.")
+    digest = subcommands.add_parser("digest", help="Preview Today locally or explicitly send once to Telegram.")
+    digest_commands = digest.add_subparsers(dest="digest_action", required=True)
+    for action in ("preview", "send-once"):
+        command = digest_commands.add_parser(action)
+        command.add_argument("--fake", action="store_true", help="Use synthetic demo data, without reading Things.")
+        command.add_argument("--timezone", help="IANA briefing timezone; default Asia/Singapore.")
+        if action == "send-once":
+            command.add_argument("--execute", action="store_true", help="Actually send; otherwise dry-run only.")
     args = parser.parse_args()
     try:
         if args.command == "doctor":
             result, failed = doctor()
+        elif args.command == "digest":
+            result = briefing(action=args.digest_action, fake=args.fake, zone=args.timezone,
+                              execute=getattr(args, "execute", False))
+            failed = result["outcome"] in ("partial", "unknown", "rejected")
         else:
             raw = "" if sys.stdin.isatty() else sys.stdin.read(100_001)
             if len(raw) > 100_000:

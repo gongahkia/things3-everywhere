@@ -5,7 +5,8 @@ The smallest test is **one creation**, explicitly chosen by you, with no tags,
 dates or follow-on edits. This checks fewer unverified behaviors at once.
 
 1. Install/open Things on this Mac. Inspect its scripting dictionary. Run
-   `uv sync --frozen` and the read-only diagnostic and list check from the README.
+   `uv sync --frozen` and the read-only diagnostic and list check from
+   [Mac setup](mac-setup.md).
    Resolve any missing-app or Automation error first. Keep the MCP registration
    read-only.
 2. Choose and explicitly identify a unique disposable task title, for example
