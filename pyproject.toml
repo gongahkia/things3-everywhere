@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "things3-everywhere"
+version = "0.1.0"
+description = "A local automation bridge to Things 3"
+requires-python = ">=3.11"
+dependencies = ["mcp==1.28.0"]
+
+[project.scripts]
+things3-everywhere = "things3_everywhere.cli:main"
+things3-everywhere-mcp = "things3_everywhere.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/things3_everywhere"]
+
