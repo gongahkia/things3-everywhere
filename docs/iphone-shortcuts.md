@@ -2,9 +2,11 @@
 
 Documentation checked **2026-10-25**. These are build instructions, not an installed or device-tested shortcut. No downloadable shortcut is supplied. Native Things actions run on the iPhone; a Mac, MCP server, bot, and Things Cloud are unnecessary for this local workflow. Cross-device sync is separate and has not been verified here.
 
-Install Things for iPhone and Apple's Shortcuts app. These actions debuted in Things 3.17 with iOS 16; use a current compatible release. Action labels and automation screens vary with iOS, Things, and language. Select the matching iOS version in Apple's guide. [Things announcement](https://culturedcode.com/things/blog/2023/01/shortcuts-reloaded/), [Apple Shortcuts guide](https://support.apple.com/guide/shortcuts/welcome/ios).
+Install Things for iPhone and Apple's Shortcuts app. The current [Things technical reference](https://culturedcode.com/things/support/articles/9596775/) lists **Things 3.17 and iOS 17** as minimum requirements; a newer app release may require a newer OS. The [2023 launch article](https://culturedcode.com/things/blog/2023/01/shortcuts-reloaded/) described iOS 16 at launch, not today's minimum. Action labels and automation screens vary with iOS, Things, and language. Select the matching iOS version in the [Apple Shortcuts guide](https://support.apple.com/guide/shortcuts/welcome/ios).
 
 **Literal** means type the text. **Token** means insert an action's output using Select Variable/Magic Variable; do not type its name. Tap a token to choose its property, such as Title or ID, or to rename it. Preserve a Things Item as an Item when it will later be edited: extracting Title produces text, not a task reference. [Apple: adjust variables](https://support.apple.com/guide/shortcuts/apda36b9018b/ios).
+
+To replace an automatically inserted input, tap it, choose **Select Variable**, and select the intended action's output in the editor. Tap the resulting token to inspect its type/property and reveal its source. The names below, such as **ScheduledItems**, are names you assign to outputs; they are not actions to search for. For **Set Variable**, also inspect its value token rather than accepting an unrelated preceding output.
 
 ## A. Read-only briefing
 
@@ -17,7 +19,7 @@ Name the shortcut **Things — Today's date filters**. Its two sections are:
 
 These are independent native **Find Items** queries. Neither is the actual Things Today list. The documented filters do not expose that list; **Open List** displays it but does not retrieve its contents. These queries exclude earlier start dates, overdue deadlines, and anything without the corresponding date. A task matching both appears in both sections intentionally. Projects, completed tasks, and canceled tasks are excluded. Compare against these filters when testing, not against Today's row count. [Things actions and filters](https://culturedcode.com/things/support/articles/9596775/).
 
-The Deadline property is not always the final deadline for repeating items that start early: Things documents that it can represent the instance's early appearance date; the template's deadline offset is unavailable. Keep the label **Deadline field today** and inspect recurring items in Things. Do not infer recurrence, appointments, or reminder times.
+The Deadline property is not always the final deadline for repeating items that start early: Things documents that it can represent the instance's early appearance date; the template's deadline offset is unavailable. Keep the label **Deadline field today** and inspect recurring items in Things. Do not infer recurrence, appointments, or reminder times. The briefing extracts titles only; it never selects Notes.
 
 Build these actions in order. Search the Things app's action category for its actions.
 
@@ -32,7 +34,7 @@ Build these actions in order. Search the Things app's action category for its ac
 9. **Count** Items in **DeadlineItems**; rename **DeadlineCount**.
 10. **If** **DeadlineCount** is literal **0**: **Text** literal **No open tasks have a deadline field of today.** **Set Variable** **DeadlineBody** to that Text token.
 11. Otherwise, **Repeat with Each** **DeadlineItems**. Inside, **Text** literal **•** and a space followed by **Repeat Item → Title** token. After the loop, **Combine Text** its **Repeat Results**, New Lines, then **Set Variable** **DeadlineBody** to Combined Text. End If.
-12. **Current Date**, then **Format Date**, short date, Time Format **None**. Rename output **DisplayDate**. This string is only for display, never for a Things date filter.
+12. **Date**, set to **Current Date** (search for Current Date if the label differs), then **Format Date**, short date, Time Format **None**. Rename output **DisplayDate**. This string is only for display, never for a Things date filter.
 13. **Text**, as below. Angle brackets stand for tokens to insert; headings and the limit notice are literal text:
 
         Things date filters — <DisplayDate>
@@ -62,9 +64,17 @@ Use a disposable, non-repeating **Shortcut Test** task that you create and contr
 
 Use **Time of Day**, **8:30 AM**, **Daily**, while the phone's time zone is **Singapore / Asia/Singapore**. This is a device-local schedule. Recheck after travel; this guide does not convert fixed Singapore time on a phone in another zone. Task date comparisons also follow the phone's local day.
 
-On versions with an **Automation** tab, create a personal automation, select Time of Day, 8:30 AM, Daily, choose **Run Immediately** where offered, and select this shortcut (or use **Run Shortcut**). Older screens may instead require disabling **Ask Before Running**. Apple's current iOS 27 guide describes opening the shortcut, **Edit → Automation**, then choosing the trigger; **Edit → Info → Privacy → Allow Running When Locked** is version-specific. Match the guide to your installed OS. [Apple: event triggers](https://support.apple.com/guide/shortcuts/apd932ff833f/ios), [Apple: automation setup](https://support.apple.com/guide/shortcuts/apdfbdbd7123/ios).
+Follow the Automation-tab flow documented by Apple, matching its version selector to your installed OS:
 
-First set the trigger a few minutes ahead. Close the editor, lock the phone, and wait without touching it. Record privately whether a notification arrives, its time, and whether an unlock/permission prompt blocks it. Repeat under your usual Focus and notification settings. Restore 8:30 AM and check the next morning. A successful manual run does not establish locked-device delivery; timing remains unverified until tested.
+1. Open **Shortcuts → Automation**. Tap **+** if needed, then **Create Personal Automation** if shown.
+2. Select **Time of Day**, set **8:30 AM**, and **Daily**.
+3. Choose **Run Immediately** if offered. On screens with **Ask Before Running**, switch it off and confirm **Don't Ask**. Leave no per-run confirmation enabled.
+4. Choose the saved **Things — Today's date filters** shortcut. If the screen instead opens an action editor, add **Run Shortcut** and explicitly select that shortcut.
+5. Save with **Done**, then reopen the automation to check its time, frequency, and selected shortcut.
+
+[Apple: automation setup](https://support.apple.com/guide/shortcuts/apdfbdbd7123/ios), [automatic execution](https://support.apple.com/guide/shortcuts/apd602971e63/ios), [event triggers](https://support.apple.com/guide/shortcuts/apd932ff833f/ios). Apple serves different guide versions/localizations; the reviewed setup page uses the Automation tab. Use your OS-specific guide if your screen differs; a particular lock-screen toggle is not a prerequisite established by this review. Do not infer locked-device support from a setting alone.
+
+First set the trigger a few minutes ahead. Close the editor, lock the phone, and wait without touching it. Record privately whether a notification arrives, its time, and whether an unlock/permission prompt blocks it. Repeat under your usual Focus and notification settings. Restore 8:30 AM and check the next morning. A successful manual run does not establish locked-device delivery; timing remains unverified until tested. If it fails, keep manual use and resolve the specific permission/action failure before enabling the daily trigger. Notification previews may reveal titles on the lock screen; choose your preferred preview privacy in iOS settings.
 
 Enable only one daily sender initially. The local-notification workflow stands alone; avoid enabling both an iPhone Telegram sender and a future Mac digest schedule. Nothing is scheduled by this repository.
 
@@ -76,12 +86,12 @@ Create a separate shortcut named **Things — Complete one test task**. Do not a
 2. **If** Find output has no value: **Show Notification**, literal **No matching test task.** Then **Stop This Shortcut** (Stop and Output on some versions, no output). End If.
 3. **Choose from List**: input the **Find Items** token as Things Items. **Select Multiple OFF**. Prompt literal **Choose the disposable task to complete**.
 4. **Set Variable** **SelectedTask** to **Chosen Item**. Preserve the whole Things Item; do not select Title here.
-5. **If** **SelectedTask** has no value, stop the shortcut. Canceling selection must not proceed to editing.
+5. **Count** Items in **SelectedTask**. **If** the count is not literal **1**, stop the shortcut. Canceling selection or accidentally enabling multiple selection must not proceed to editing.
 6. **Show Alert**, **Show Cancel Button ON**. Title literal **Complete this one task?** Message: literal **Title:** + **SelectedTask → Title** token, newline, literal **ID:** + **SelectedTask → ID** token, then literal **Continue only if this is your disposable, non-repeating test task. Changes cannot be undone by this shortcut.**
 7. **Edit Items** (Things): **Set**, **Status**, **Completed**. Explicitly set Items to the stored **SelectedTask** token as a whole Item. Inspect its source: it must not be Find Items, all candidates, the alert text, or a Title string.
-8. **Show Items** (Things): input **SelectedTask**, then verify that exact task is completed in Things. If navigation differs, find it in Logbook and compare its ID. Reaching the end is not independent proof of the resulting state.
+8. **Show Items** (Things): input the original **SelectedTask** whole Item, then verify that exact task is completed in Things. This follows its item reference rather than searching by title again. If navigation differs, inspect Logbook privately; if you cannot identify the exact item, the result remains unverified. Reaching the end is not independent proof of the resulting state.
 
-Test cancellation at the picker and alert first; verify nothing changed. Then select the identified task, confirm, and verify only it changed. Duplicate titles require inspecting the displayed stable ID, not selecting the first match.
+Test cancellation at the picker and alert first; verify nothing changed. Then select the identified task, confirm, and verify only it changed. Duplicate titles require inspecting the displayed stable ID, not selecting the first match. If you cannot recognize the intended candidate, cancel and give your disposable test task a distinctive title manually in Things, then adjust the candidate filter. Never replace the picker with Get First Item. [Apple: Choose from List](https://support.apple.com/guide/shortcuts/use-list-actions-apd4dcacc115/ios).
 
 Cultured Code explicitly says **Edit Items changes cannot be undone**. Cancel works only before editing. Manually setting a task back to Open is another mutation and may not restore logging, dates, or recurrence effects; archived-heading items can remain in Logbook. [Things editing and known issues](https://culturedcode.com/things/support/articles/9596775/), [Apple: cancelable alerts](https://support.apple.com/guide/shortcuts/use-the-show-alert-action-apdb9661c761/ios).
 

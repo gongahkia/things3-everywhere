@@ -13,6 +13,11 @@ Choose a starting point:
 | Mac digest preview and explicit Telegram send-once | [Digest and Telegram](docs/telegram-setup.md) | Implemented; HTTP tests are mocked. No real send performed. |
 | Telegram directly from iPhone | [Phone delivery](docs/iphone-telegram.md) | Optional manual setup guide; not installed or device-tested. |
 
+**Start on iPhone:** build Guide A, run it manually, then perform its locked-phone
+test before choosing an 8:30 AM Singapore automation. No repository install or
+Mac is needed. Manual task completion and Telegram delivery are separate opt-ins.
+The guides record their official-source review date and remaining device checks.
+
 The Mac implementation uses AppleScript for actual Today/Inbox lists, bounded
 title search, and stable-ID lookup. Seven MCP tools also expose create, update
 and complete contracts. Creation has a guarded execution path and read-back;
@@ -52,6 +57,9 @@ No remote ChatGPT access, Telegram reply editing, polling, webhook, public
 listener, automatic scheduling, or calendar integration is implemented. The
 phone guides require manual setup and separate locked-device tests. Enable only
 one daily sender initially. See the [verification checklist](docs/verification.md).
+Calendar integration and a Mac scheduler remain future work; the optional calendar
+appendix is an unverified specification. See the [setup review](docs/tranche-03-report.md)
+for what was checked, corrected, and left for manual testing.
 
 Run the automated checks:
 

@@ -15,7 +15,7 @@ Install the locked Python environment first: **uv sync --frozen** from the repos
     # Still a dry run: live read and local output, zero Telegram requests.
     THINGS_ALLOW_WRITES=false .venv/bin/things3-everywhere digest send-once
 
-An explicit **--execute** on send-once is the only CLI route to delivery. A preview rejects that flag. Fake mode is explicit and labeled synthetic. Credentials being present never enable sending. Things writes are unnecessary for all digest operations.
+An explicit **--execute** on send-once is the only CLI route to delivery. A preview rejects that flag. Fake mode is explicit and labeled synthetic. Credentials being present never enable sending. Digest operations construct the existing service with Things writes forced off, even if the parent shell has **THINGS_ALLOW_WRITES=true**. Invalid timezone/options fail before a live read.
 
 The digest uses the **actual Things Today list**, including source ordering. It deduplicates stable IDs, preserving distinct tasks with identical titles. Notes, IDs, tags, and recurrence details are excluded. It has a clear empty state. The adapter caps results at 100; when has_more is true, the digest prominently says PARTIAL LIST. No upcoming-deadline scan is added.
 
@@ -62,13 +62,18 @@ Verify the synthetic message in that chat. This command is for later user execut
 
 ## Delivery and privacy limits
 
-The payload leaves the device. Requests are plain JSON POSTs to the fixed Telegram host, with no parse_mode and disabled link previews. Tokens appear in API paths internally, so raw URLs, bodies, and exceptions are never logged. HTTP debug mode rejects sending; do not add external tracing or debugger hooks that capture secrets.
+The payload leaves the device. Requests are plain JSON POSTs to the fixed Telegram host, with no parse_mode and disabled link previews. Tokens appear in API paths internally, so raw URLs, bodies, and exceptions are never logged. Transport errors are converted to fixed diagnostics without preserving the original exception context. HTTP debug mode rejects sending; do not add external tracing or debugger hooks that capture secrets.
 
 The client uses a 15-second socket timeout, validates the ok flag, message ID, echoed text and private destination, and never follows redirects. This bounds socket operations, not the total duration of a multi-message sequence.
 
 Messages contain at most 4096 UTF-16 units, conservatively within Telegram's limit. Every Unicode code point is preserved without silent title truncation. A combining sequence or joined emoji can cross a message boundary; concatenating chunks reconstructs the exact formatted text. Chunks are never retried automatically or sent in parallel.
 
-Results distinguish dry_run, accepted, rejected, partial, and unknown. Explicit rate limits expose retry_after_seconds when supplied, then stop. Timeouts, invalid responses and mismatched receipts are uncertain: inspect the chat before retrying. For partial delivery, confirmed_messages counts earlier verified responses, failed_message identifies the attempted chunk, current_message_uncertain identifies ambiguity, and unattempted_messages counts what was never sent. Do not rerun the whole digest blindly. Acceptance does not prove viewing; there is no exactly-once guarantee or delivery-history database.
+Results distinguish dry_run, accepted, rejected, partial, and unknown. Explicit rate limits expose retry_after_seconds when supplied, then stop. Wait at least that interval before choosing a manual retry. Timeouts, invalid responses and mismatched receipts are uncertain: inspect the chat before retrying. For partial delivery, confirmed_messages counts earlier verified responses, attempted_messages counts attempted chunks, failed_message identifies the failed chunk, current_message_uncertain identifies ambiguity, and unattempted_messages counts what was never attempted. Do not rerun the whole digest blindly. Acceptance does not prove viewing; there is no exactly-once guarantee or delivery-history database.
+
+The CLI exits with status 0 for preview, dry_run and accepted results; partial,
+unknown and rejected delivery exit with status 1. Invalid CLI syntax exits with
+status 2 without echoing rejected argument values. Returned status records contain
+no token, chat ID, message body or raw Telegram response after an actual send.
 
 No polling, reply commands, webhook, public endpoint, scheduler, launchd job, cron entry, login item or daemon is installed. Enable only one daily sender initially: iPhone automation or a future Mac scheduler.
 
