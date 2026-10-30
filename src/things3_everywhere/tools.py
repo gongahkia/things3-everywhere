@@ -49,9 +49,25 @@ TOOL_DEFINITIONS = [
     definition("things_complete_task", "Preview completion of one stable ID. Live execution is currently blocked: AppleScript recurrence safety is unknown.",
                object_schema({"id": ID, "execution": EXECUTION}, ["id"]), writing=True),
 ]
+SESSION = {"session_id": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$"}}
+TOOL_DEFINITIONS.extend([
+    definition("things_prepare_manual_change", "Prepare one human edit. Reads only; never reveals or edits. Snapshot lasts 15 minutes in this server process. Recurrence remains unknown.",
+               object_schema({"id": ID, "operation": {"enum": ["rename", "replace_notes", "change_deadline", "complete"]},
+                              "value": {"type": "string"}}, ["id", "operation"])),
+    definition("things_reveal_manual_change", "Explicit user-invoked UI reveal for a prepared handoff. Require user approval before calling. No task mutation. One reveal attempt; never retry automatically.",
+               object_schema(SESSION, ["session_id"])),
+    definition("things_verify_manual_change", "After the user edits manually, compare the same ID with the private snapshot. Consumes the session even on failure. Never edits or infers success from reveal.",
+               object_schema(SESSION, ["session_id"])),
+])
+for tool in TOOL_DEFINITIONS[-3:]:
+    tool["annotations"]["idempotentHint"] = False
+
 METHODS = {"things_today": "today", "things_inbox": "inbox", "things_search": "search",
            "things_get_task": "get_task", "things_create_task": "create_task",
            "things_update_task": "update_task", "things_complete_task": "complete_task"}
+METHODS.update({"things_prepare_manual_change": "prepare_manual_change",
+                "things_reveal_manual_change": "reveal_manual_change",
+                "things_verify_manual_change": "verify_manual_change"})
 VALIDATORS = {d["name"]: Draft202012Validator(d["inputSchema"]) for d in TOOL_DEFINITIONS}
 
 

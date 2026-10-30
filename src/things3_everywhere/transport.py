@@ -72,13 +72,13 @@ class AppleScriptTransport:
             raise BridgeError("UNSUPPORTED_INTERFACE", "The installed Things dictionary lacks required terms.")
 
     def call(self, operation, payload):
-        if operation not in {"today", "inbox", "search", "get", "create"}:
+        if operation not in {"today", "inbox", "search", "get", "create", "inspect_task", "show_task"}:
             raise BridgeError("UNSUPPORTED_OPERATION", "This transport operation is not available.")
         writing = operation == "create"
         if writing:
             self.policy.require(payload.get("execution", "preview"))
             payload = {"fields": v.fields(payload.get("fields"), create=True), "execution": "execute"}
-        elif operation == "get":
+        elif operation in {"get", "inspect_task", "show_task"}:
             payload = {"id": v.task_id(payload.get("id"))}
         elif operation == "search":
             payload = {"query": v.text(payload.get("query"), "query", 500, nonempty=True),
@@ -120,6 +120,8 @@ class AppleScriptTransport:
                 -1712: ("TIMEOUT", "The Things Apple Event timed out. Inspect Things before retrying a write."),
                 -1728: ("NOT_FOUND", "No task exists with that stable ID."),
                 -600: ("APP_UNAVAILABLE", "Things is unavailable. Open Things and retry the read."),
+                7104: ("ITEM_KIND_UNSUPPORTED", "Target is not a verified to-do item."),
+                7105: ("INVALID_RESPONSE", "Things returned a different task ID."),
                 7101: ("READ_ONLY", "The script's write gate rejected execution."),
                 7102: ("UNKNOWN_TAG", "Every supplied tag must already exist with a unique matching name."),
             }

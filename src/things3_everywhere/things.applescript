@@ -26,6 +26,12 @@ on dateText(d)
     return (text -4 thru -1 of ("0000" & yy)) & "-" & mm & "-" & dd
 end dateText
 
+on requireHandoffKind(itemClass, taskCount)
+    if taskCount is not 1 then error number 7104
+    -- dictionary class codes: to do (tstk), selected to do (tslt).
+    if itemClass is not «class tstk» and itemClass is not «class tslt» then error number 7104
+end requireHandoffKind
+
 on taskRow(t)
     tell application id "com.culturedcode.ThingsMac"
         set itemID to id of t
@@ -81,6 +87,22 @@ on run
                     set createdID to id of createdTask
                 end tell
                 response's setObject:createdID forKey:"id"
+            else if operation is "inspect_task" or operation is "show_task" then
+                set targetID to (request's objectForKey:"id") as text
+                tell application id "com.culturedcode.ThingsMac"
+                    set targetTask to to do id targetID
+                    if (id of targetTask) is not targetID then error number 7105
+                    -- id lookup can wrap projects as selected to do; require typed collection membership.
+                    set taskCount to count of (to dos whose id is targetID)
+                    my requireHandoffKind(class of targetTask, taskCount)
+                    if operation is "show_task" then
+                        show targetTask
+                        activate
+                    end if
+                end tell
+                response's setObject:"to do" forKey:"kind"
+                response's setObject:targetID forKey:"id"
+                if operation is "inspect_task" then response's setObject:(my taskRow(targetTask)) forKey:"row"
             else if operation is "get" then
                 set targetID to (request's objectForKey:"id") as text
                 tell application id "com.culturedcode.ThingsMac"

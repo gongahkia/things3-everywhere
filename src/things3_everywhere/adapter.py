@@ -54,6 +54,23 @@ class ThingsAppleScriptAdapter:
             raise BridgeError("INVALID_RESPONSE", "Things returned a different task ID.")
         return result
 
+    def get_handoff_task(self, id):
+        id = v.task_id(id)
+        response = self.transport.call("inspect_task", {"id": id})
+        if response.get("kind") != "to do":
+            raise BridgeError("ITEM_KIND_UNSUPPORTED", "Target is not a verified to-do item.")
+        task = parse_task(response.get("row"))
+        if task.id != id:
+            raise BridgeError("INVALID_RESPONSE", "Things returned a different task ID.")
+        return task
+
+    def reveal_task(self, id):
+        id = v.task_id(id)
+        response = self.transport.call("show_task", {"id": id})
+        if response.get("kind") != "to do" or response.get("id") != id:
+            raise BridgeError("INVALID_RESPONSE", "Things returned an invalid reveal receipt.")
+        return id
+
     def create_task(self, fields, *, execution="preview"):
         fields = v.fields(fields, create=True)
         self.policy.require(execution)

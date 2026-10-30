@@ -14,8 +14,8 @@ development Mac. `APP_NOT_FOUND` is expected there, not evidence of a discovery
 defect. Things-specific AppleScript execution remains unverified. Do not search
 for, launch, or install Things on that Mac to satisfy a test.
 
-Seven tools cover Today, Inbox, title search, get-by-ID, create, update and
-complete. All write tools default to previews. Creation has a guarded execution
+Ten tools cover Today, Inbox, title search, get-by-ID, create, update and
+complete, plus prepare/reveal/verify for [manual handoffs](manual-handoff.md). All write tools default to previews. Creation has a guarded execution
 path with read-back verification. **Live update and completion are blocked**:
 the reviewed AppleScript interface cannot establish recurrence safety. Their
 shared service contracts are implemented and tested with fakes. There is no
@@ -201,6 +201,9 @@ Stdout contains only protocol traffic; redacted diagnostics use stderr.
 | `things_create_task` | `fields` object, required title; optional `execution: "preview"` or `"execute"`. Creates one ordinary task in Inbox. |
 | `things_update_task` | Required stable `id` and nonempty `fields`; preview available, live execution blocked by recurrence safety. |
 | `things_complete_task` | Required stable `id`; preview available, live execution blocked by recurrence safety. |
+| `things_prepare_manual_change` | One stable ID, operation and replacement value; private 15-minute snapshot, no UI or task mutation. |
+| `things_reveal_manual_change` | Explicitly approved UI reveal using the returned session ID; no task mutation. |
+| `things_verify_manual_change` | Consume the snapshot and compare the same stable ID after the human edit. |
 
 List results contain `tasks`, `count` (returned count), `limit`, and `has_more`.
 No total inventory or pagination is exposed. Things selects matching task
@@ -255,7 +258,7 @@ writes disabled during that separate CLI test.
 | --- | --- |
 | `src/things3_everywhere/adapter.py`, `transport.py`, `things.applescript` | Supported AppleScript adapter; fixed source, JSON data on stdin, bounded subprocess timeouts, sanitized errors. |
 | `model.py`, `validation.py`, `safety.py`, `service.py` | Reusable task model, validation, policy, preview/execute handling and read-back verification. |
-| `tools.py`, `server.py` | Seven MCP schemas/handlers and stdio transport using the official MCP SDK. |
+| `tools.py`, `server.py` | Ten MCP schemas/handlers and stdio transport using the official MCP SDK. |
 | `cli.py`, `runtime.py` | Local diagnostics, calls, and environment wiring. |
 | `tests/` | Synthetic adapter, subprocess and MCP protocol tests. Never real Things tasks. |
 
@@ -288,3 +291,7 @@ codex mcp remove things3-everywhere
 Stop any manually launched stdio process with Ctrl-C. If desired, revoke the
 launching app's Things Automation permission in System Settings. There is no
 daemon to uninstall and no task database to migrate.
+
+Tranche 08 adds bounded session diagnostics and exact five-field comparisons;
+see [handoff lifecycle and live status](manual-handoff.md#tranche-08-lifecycle-and-verification-hardening).
+Notes, deadline and completion handoffs are not yet live-verified.

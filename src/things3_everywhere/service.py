@@ -3,6 +3,7 @@
 from threading import RLock
 
 from .errors import BridgeError
+from .handoff import Handoffs
 from .model import Adapter, Task
 from .safety import WritePolicy, require_nonrepeating
 from . import validation as v
@@ -13,6 +14,16 @@ class ThingsService:
         self.adapter = adapter
         self.policy = policy
         self._writes = RLock()
+        self.handoffs = Handoffs(adapter)
+
+    def prepare_manual_change(self, id, operation, value=None):
+        return self.handoffs.prepare(id, operation, value)
+
+    def reveal_manual_change(self, session_id):
+        return self.handoffs.reveal(session_id)
+
+    def verify_manual_change(self, session_id):
+        return self.handoffs.verify(session_id)
 
     def _page(self, page, limit: int, include_notes: bool) -> dict:
         return {"tasks": [t.public(include_notes=include_notes) for t in page.tasks[:limit]],

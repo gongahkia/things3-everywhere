@@ -12,7 +12,15 @@ from things3_everywhere.service import ThingsService
 from test_service import FakeAdapter, sample
 
 
-class FailOnWriteAdapter(FakeAdapter):
+class ManualFakeAdapter(FakeAdapter):
+    def get_handoff_task(self, id):
+        return self.get_task(id)
+
+    def reveal_task(self, id):
+        return self.get_task(id).id
+
+
+class FailOnWriteAdapter(ManualFakeAdapter):
     """Count entry to a mutation method, even if it would reject internally."""
     mutation_attempts = 0
 
@@ -26,7 +34,7 @@ class FailOnWriteAdapter(FakeAdapter):
 
 
 enabled = os.environ.get("TEST_ENABLE_FAKE_WRITES") == "true"
-adapter_type = FakeAdapter if enabled else FailOnWriteAdapter
+adapter_type = ManualFakeAdapter if enabled else FailOnWriteAdapter
 adapter = adapter_type([sample(), sample("synthetic-b")], enabled=enabled)
 server.configure_logging()
 sys.stderr.write("Synthetic MCP fixture: fake Things adapter; no Things access.\n")

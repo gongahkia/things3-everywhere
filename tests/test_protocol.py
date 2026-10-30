@@ -66,7 +66,7 @@ class ProtocolTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "darwin", "Missing-app production preflight requires macOS")
     def test_production_live_backend_missing_app_is_structured_without_fallback(self):
         self.start(missing_app=True)
-        self.assertEqual(len(self.request("tools/list", {})["result"]["tools"]), 7)
+        self.assertEqual(len(self.request("tools/list", {})["result"]["tools"]), len(TOOL_DEFINITIONS))
         for name, arguments in [
             ("things_today", {"limit": 2}), ("things_inbox", {"limit": 2}),
             ("things_search", {"query": "synthetic-absent-marker", "limit": 2}),
@@ -81,7 +81,7 @@ class ProtocolTests(unittest.TestCase):
             self.assertIn("THINGS_APP_PATH", body["error"]["message"])
             self.assertNotIn("AbsentFixture", json.dumps(body))
         # The same process still responds after the dependency errors.
-        self.assertEqual(len(self.request("tools/list", {})["result"]["tools"]), 7)
+        self.assertEqual(len(self.request("tools/list", {})["result"]["tools"]), len(TOOL_DEFINITIONS))
 
     def send(self, message):
         self.process.stdin.write(json.dumps(message) + "\n")
@@ -107,7 +107,7 @@ class ProtocolTests(unittest.TestCase):
     def test_stdio_handshake_reads_defaults_and_all_mutation_gates(self):
         self.start()
         tools = self.request("tools/list", {})["result"]["tools"]
-        self.assertEqual(len(tools), 7)
+        self.assertEqual(len(tools), len(TOOL_DEFINITIONS))
         self.assertEqual({t["name"] for t in tools}, {t["name"] for t in TOOL_DEFINITIONS})
         for name in ("things_today", "things_inbox"):
             self.assertFalse(self.call(name, {})["isError"])
@@ -146,6 +146,27 @@ class ProtocolTests(unittest.TestCase):
         created = self.call("things_create_task", {"fields": {"title": "Synthetic 雪", "notes": '"\\\nUnicode 🐢'}, "execution": "execute"})
         self.assertEqual(created["structuredContent"]["outcome"], "verified")
 
+    def test_manual_handoff_over_stdio_without_writes(self):
+        self.start()
+        proposal = self.call("things_prepare_manual_change", {
+            "id": "synthetic-a", "operation": "rename", "value": "New"})
+        self.assertFalse(proposal["isError"])
+        token = proposal["structuredContent"]["session_id"]
+        self.assertEqual(self.call("things_reveal_manual_change", {"session_id": token})[
+            "structuredContent"]["outcome"], "revealed")
+        self.assertEqual(self.call("things_verify_manual_change", {"session_id": token})[
+            "structuredContent"]["outcome"], "mismatched")
+        self.assertEqual(self.call("things_verify_manual_change", {"session_id": token})[
+            "structuredContent"]["outcome"], "inconclusive")
+
+    def test_manual_handoff_observes_synthetic_external_edit(self):
+        self.start(enabled=True)
+        token = self.call("things_prepare_manual_change", {
+            "id": "synthetic-a", "operation": "rename", "value": "New"})["structuredContent"]["session_id"]
+        self.call("things_update_task", {"id": "synthetic-a", "fields": {"title": "New"}, "execution": "execute"})
+        self.assertEqual(self.call("things_verify_manual_change", {"session_id": token})[
+            "structuredContent"]["outcome"], "verified")
+
     def test_dispatch_sanitizes_failures_and_rejects_unknown_fields(self):
         adapter = FakeAdapter([sample()])
         service = ThingsService(adapter, WritePolicy(True))
@@ -171,6 +192,17 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(result, {"count": 1, "limit": 5, "has_more": False})
         self.assertEqual(summarize({"task": task}), {"count": 1, "outcome": "read"})
 
+
+    def test_handoff_instance_changes_after_stdio_process_replacement(self):
+        self.start()
+        token = self.call('things_prepare_manual_change', {
+            'id': 'synthetic-a', 'operation': 'replace_notes', 'value': 'Synthetic\n雪'})['structuredContent']['session_id']
+        self.stop()
+        self.start()
+        result = self.call('things_verify_manual_change', {'session_id': token})['structuredContent']
+        self.assertEqual(result['outcome'], 'inconclusive')
+        self.assertEqual(result['reason'], 'SESSION_INSTANCE_MISMATCH')
+        self.assertFalse(result['mutated'])
 
 if __name__ == "__main__":
     unittest.main()

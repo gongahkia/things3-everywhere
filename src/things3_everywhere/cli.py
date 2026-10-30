@@ -40,7 +40,7 @@ def summarize(result):
         return {key: result[key] for key in ("count", "limit", "has_more")}
     if "task" in result:
         return {"count": 1, "outcome": result.get("outcome", "read")}
-    return {key: value for key, value in result.items() if key not in {"id", "fields"}}
+    return {key: value for key, value in result.items() if key not in {"id", "fields", "proposed", "session_id"}}
 
 
 def main():
