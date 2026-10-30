@@ -137,6 +137,7 @@ on run
     set raw to current application's NSFileHandle's fileHandleWithStandardInput()'s readDataToEndOfFile()
     set value to current application's NSJSONSerialization's JSONObjectWithData:raw options:0 |error|:(missing value)
     value's setObject:(my dateText(my calendarDate("2032-02-29"))) forKey:"date"
+    value's setObject:(my dateText(missing value)) forKey:"missing_date"
     return my jsonText(value)
 end run
 '''
@@ -146,7 +147,7 @@ end run
         process = subprocess.run(["/usr/bin/osascript", "-e", script], input=json.dumps(payload).encode(),
                                  capture_output=True, timeout=10)
         self.assertEqual(process.returncode, 0, "Synthetic AppleScript helpers failed")
-        self.assertEqual(json.loads(process.stdout), {**payload, "date": "2032-02-29"})
+        self.assertEqual(json.loads(process.stdout), {**payload, "date": "2032-02-29", "missing_date": None})
 
     @unittest.skipUnless(sys.platform == "darwin", "AppleScript gate test requires macOS")
     def test_script_gate_without_things_or_mutation_code(self):

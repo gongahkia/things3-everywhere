@@ -19,7 +19,7 @@ on calendarDate(value)
 end calendarDate
 
 on dateText(d)
-    if d is missing value then return current application's NSNull's null()
+    if d is missing value then return current application's NSNull's |null|()
     set yy to (year of d as integer) as text
     set mm to text -2 thru -1 of ("0" & ((month of d as integer) as text))
     set dd to text -2 thru -1 of ("0" & ((day of d as integer) as text))
